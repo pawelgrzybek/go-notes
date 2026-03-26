@@ -14,12 +14,10 @@ import (
 	pb "github.com/pawelgrzybek/go-notes/gen/notes/v1"
 )
 
-const baseURL = "http://localhost:8080"
-
 func main() {
 	conn, err := grpc.NewClient("localhost:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		fmt.Errorf("failed to connect: %v", err)
+		fmt.Printf("failed to connect: %v", err)
 		os.Exit(1)
 	}
 	defer conn.Close()
