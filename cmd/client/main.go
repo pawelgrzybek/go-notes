@@ -9,8 +9,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	"github.com/pawelgrzybek/go-notes/internal/models"
 )
 
 const baseURL = "http://localhost:8080"

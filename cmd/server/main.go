@@ -4,10 +4,13 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"net/http"
+	"net"
 
 	_ "github.com/mattn/go-sqlite3"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
+	pb "github.com/pawelgrzybek/go-notes/gen/notes/v1"
 	"github.com/pawelgrzybek/go-notes/internal/server"
 	"github.com/pawelgrzybek/go-notes/internal/store"
 )
@@ -38,15 +41,17 @@ func run() error {
 	}
 
 	s := store.NewStore(db)
-	h := server.NewServer(s)
-
-	svr := &http.Server{
-		Addr:    ":8080",
-		Handler: h,
-	}
 
 	log.Println("server listening on :8080")
-	return svr.ListenAndServe()
+
+	lis, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		return err
+	}
+	grpcServer := grpc.NewServer()
+	pb.RegisterNoteServiceServer(grpcServer, &server.Server{Store: s})
+	reflection.Register(grpcServer)
+	return grpcServer.Serve(lis)
 }
 
 func main() {
