@@ -1,19 +1,31 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
+	"strconv"
 	"strings"
-	"time"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	pb "github.com/pawelgrzybek/go-notes/gen/notes/v1"
 )
 
 const baseURL = "http://localhost:8080"
 
 func main() {
+	conn, err := grpc.NewClient("localhost:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		fmt.Errorf("failed to connect: %v", err)
+		os.Exit(1)
+	}
+	defer conn.Close()
+
+	client := pb.NewNoteServiceClient(conn)
+
 	list := flag.Bool("list", false, "List all notes")
 	get := flag.String("get", "", "Get a note by ID")
 	add := flag.String("add", "", "Add a new note with the given content")
@@ -23,154 +35,89 @@ func main() {
 
 	switch {
 	case *list:
-		doList()
+		doList(client)
 	case *get != "":
-		doGet(*get)
+		doGet(client, *get)
 	case *add != "":
-		doAdd(*add)
+		doAdd(client, *add)
 	case *del != "":
-		doDelete(*del)
+		doDelete(client, *del)
 	case *deleteAll:
-		doDeleteAll()
+		doDeleteAll(client)
 	default:
 		flag.Usage()
 		os.Exit(1)
 	}
 }
 
-func doList() {
-	resp, err := http.Get(baseURL + "/")
+func doList(client pb.NoteServiceClient) {
+	notes, err := client.ListNotes(context.Background(), &pb.ListNotesRequest{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		fmt.Fprintf(os.Stderr, "Error: server returned %d\n", resp.StatusCode)
-		os.Exit(1)
-	}
-
-	var notes []models.Note
-	if err := json.NewDecoder(resp.Body).Decode(&notes); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-	printNotes(notes)
+	printNotes(notes.Notes)
 }
 
-func doGet(id string) {
-	resp, err := http.Get(baseURL + "/" + id)
+func doGet(client pb.NoteServiceClient, id string) {
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: invalid ID %q\n", id)
+		os.Exit(1)
+	}
+
+	note, err := client.GetNote(context.Background(), &pb.GetNoteRequest{Id: new(int32(idInt))})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		fmt.Fprintf(os.Stderr, "Error: server returned %d\n", resp.StatusCode)
-		os.Exit(1)
-	}
 
-	var note models.Note
-	if err := json.NewDecoder(resp.Body).Decode(&note); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-	printNote(note)
+	printNote(note.GetNote())
 }
 
-func doAdd(content string) {
-	payload, err := json.Marshal(map[string]string{"note": content})
+func doAdd(client pb.NoteServiceClient, content string) {
+	note, err := client.CreateNote(context.Background(), &pb.CreateNoteRequest{Note: &content})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-
-	resp, err := http.Post(baseURL+"/", "application/json", bytes.NewReader(payload))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated {
-		fmt.Fprintf(os.Stderr, "Error: server returned %d\n", resp.StatusCode)
-		os.Exit(1)
-	}
-
-	var note models.Note
-	if err := json.NewDecoder(resp.Body).Decode(&note); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-	printNote(note)
+	printNote(note.GetNote())
 }
 
-func doDelete(id string) {
-	req, err := http.NewRequest(http.MethodDelete, baseURL+"/"+id, nil)
+func doDelete(client pb.NoteServiceClient, id string) {
+	idInt, err := strconv.Atoi(id)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		fmt.Fprintf(os.Stderr, "Error: server returned %d\n", resp.StatusCode)
+		fmt.Fprintf(os.Stderr, "Error: invalid ID %q\n", id)
 		os.Exit(1)
 	}
 
-	var note models.Note
-	if err := json.NewDecoder(resp.Body).Decode(&note); err != nil {
+	note, err := client.DeleteNote(context.Background(), &pb.DeleteNoteRequest{Id: new(int32(idInt))})
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	printNote(note)
+
+	printNote(note.GetNote())
 }
 
-func doDeleteAll() {
-	req, err := http.NewRequest(http.MethodDelete, baseURL+"/", nil)
+func doDeleteAll(client pb.NoteServiceClient) {
+	notes, err := client.DeleteAllNotes(context.Background(), &pb.DeleteAllNotesRequest{})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		fmt.Fprintf(os.Stderr, "Error: server returned %d\n", resp.StatusCode)
-		os.Exit(1)
-	}
-
-	var notes []models.Note
-	if err := json.NewDecoder(resp.Body).Decode(&notes); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-	printNotes(notes)
+	printNotes(notes.GetNotes())
 }
 
-func formatTime(raw string) string {
-	t, err := time.Parse(time.RFC3339, raw)
-	if err != nil {
-		return raw
-	}
-	return t.Format("02 Jan 2006, 15:04")
+func formatNote(n *pb.Note) string {
+	return fmt.Sprintf("id: %d\nnote: %s\ncreated: %s", *n.Id, *n.Note, n.GetCreatedAt().AsTime().Format("02 Jan 2006, 15:04"))
 }
 
-func formatNote(n models.Note) string {
-	return fmt.Sprintf("id: %d\nnote: %s\ncreated: %s", n.ID, n.Note, formatTime(n.CreatedAt))
-}
-
-func printNote(n models.Note) {
+func printNote(n *pb.Note) {
 	fmt.Println(formatNote(n))
 }
 
-func printNotes(notes []models.Note) {
+func printNotes(notes []*pb.Note) {
 	parts := make([]string, len(notes))
 	for i, n := range notes {
 		parts[i] = formatNote(n)
