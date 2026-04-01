@@ -10,7 +10,6 @@ import (
 )
 
 func (s *Server) ListNotes(ctx context.Context, req *pb.ListNotesRequest) (*pb.ListNotesResponse, error) {
-	//                       db call here 👇
 	list, err := s.Store.List()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list notes: %v", err)
