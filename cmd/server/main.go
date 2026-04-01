@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 	"google.golang.org/grpc"
@@ -29,13 +30,12 @@ func run() error {
 
 	fmt.Println("Successfully connected to SQLite database")
 
-	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS notes (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			note TEXT NOT NULL,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		)
-	`)
+	migration, err := os.ReadFile("internal/sql/migrations/schema.sql")
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(string(migration))
 	if err != nil {
 		return err
 	}
