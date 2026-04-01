@@ -29,11 +29,9 @@ func NewStore(conn *sql.DB) Store {
 }
 
 func noteToProto(n db.Note) *pb.Note {
-	id := int32(n.ID)
-	note := n.Note
 	return &pb.Note{
-		Id:        &id,
-		Note:      &note,
+		Id:        new(int32(n.ID)),
+		Note:      new(n.Note),
 		CreatedAt: timestamppb.New(n.CreatedAt),
 	}
 }
