@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/mattn/go-sqlite3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -17,28 +19,33 @@ import (
 )
 
 func run() error {
-	db, err := sql.Open("sqlite3", "./app.db")
+	m, err := migrate.New(
+		"file://internal/sql/migrations",
+		"sqlite3://./app.db",
+	)
+	if err != nil {
+		return fmt.Errorf("creating migrate instance: %w", err)
+	}
 
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("running migrations: %w", err)
+	}
+
+	srcErr, dbErr := m.Close()
+	if srcErr != nil {
+		return srcErr
+	}
+	if dbErr != nil {
+		return dbErr
+	}
+
+	fmt.Println("Migrations applied successfully")
+
+	db, err := sql.Open("sqlite3", "./app.db")
 	if err != nil {
 		return err
 	}
 	defer db.Close()
-
-	if err := db.Ping(); err != nil {
-		return err
-	}
-
-	fmt.Println("Successfully connected to SQLite database")
-
-	migration, err := os.ReadFile("internal/sql/migrations/schema.sql")
-	if err != nil {
-		return err
-	}
-
-	_, err = db.Exec(string(migration))
-	if err != nil {
-		return err
-	}
 
 	s := store.NewStore(db)
 
