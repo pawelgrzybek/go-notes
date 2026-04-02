@@ -2,10 +2,12 @@ package server
 
 import (
 	pb "github.com/pawelgrzybek/go-notes/gen/notes/v1"
+	"github.com/pawelgrzybek/go-notes/internal/notifier"
 	"github.com/pawelgrzybek/go-notes/internal/store"
 )
 
 type Server struct {
 	pb.UnimplementedNoteServiceServer
-	Store store.Store
+	Store    store.Store
+	Notifier *notifier.Notifier
 }

@@ -17,6 +17,7 @@ service NoteService {
   rpc CreateNote(CreateNoteRequest) returns (CreateNoteResponse);
   rpc DeleteNote(DeleteNoteRequest) returns (DeleteNoteResponse);
   rpc DeleteAllNotes(DeleteAllNotesRequest) returns (DeleteAllNotesResponse);
+  rpc WatchNotes(WatchNotesRequest) returns (stream WatchNotesResponse);
 }
 
 message ListNotesRequest {}
@@ -50,5 +51,11 @@ message DeleteNoteResponse {
 message DeleteAllNotesRequest {}
 
 message DeleteAllNotesResponse {
+  repeated Note notes = 1;
+}
+
+message WatchNotesRequest {}
+
+message WatchNotesResponse {
   repeated Note notes = 1;
 }

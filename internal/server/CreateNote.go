@@ -15,6 +15,10 @@ func (s *Server) CreateNote(ctx context.Context, req *pb.CreateNoteRequest) (*pb
 		return nil, status.Errorf(codes.Internal, "failed to create note: %v", err)
 	}
 
+	if s.Notifier != nil {
+		s.Notifier.Notify()
+	}
+
 	return &pb.CreateNoteResponse{
 		Note: note,
 	}, nil

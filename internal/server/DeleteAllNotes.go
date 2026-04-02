@@ -15,6 +15,10 @@ func (s *Server) DeleteAllNotes(ctx context.Context, req *pb.DeleteAllNotesReque
 		return nil, status.Errorf(codes.Internal, "failed to delete all notes: %v", err)
 	}
 
+	if s.Notifier != nil {
+		s.Notifier.Notify()
+	}
+
 	return &pb.DeleteAllNotesResponse{
 		Notes: notes,
 	}, nil

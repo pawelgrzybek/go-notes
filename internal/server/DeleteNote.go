@@ -19,6 +19,10 @@ func (s *Server) DeleteNote(ctx context.Context, req *pb.DeleteNoteRequest) (*pb
 		return nil, status.Errorf(codes.Internal, "failed to delete note: %v", err)
 	}
 
+	if s.Notifier != nil {
+		s.Notifier.Notify()
+	}
+
 	return &pb.DeleteNoteResponse{
 		Note: note,
 	}, nil

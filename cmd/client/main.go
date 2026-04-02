@@ -25,6 +25,7 @@ func main() {
 	client := pb.NewNoteServiceClient(conn)
 
 	list := flag.Bool("list", false, "List all notes")
+	watch := flag.Bool("watch", false, "Watch notes for real-time updates")
 	get := flag.String("get", "", "Get a note by ID")
 	add := flag.String("add", "", "Add a new note with the given content")
 	del := flag.String("delete", "", "Delete a note by ID")
@@ -34,6 +35,8 @@ func main() {
 	switch {
 	case *list:
 		doList(client)
+	case *watch:
+		doWatch(client)
 	case *get != "":
 		doGet(client, *get)
 	case *add != "":
@@ -45,6 +48,24 @@ func main() {
 	default:
 		flag.Usage()
 		os.Exit(1)
+	}
+}
+
+func doWatch(client pb.NoteServiceClient) {
+	stream, err := client.WatchNotes(context.Background(), &pb.WatchNotesRequest{})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	for {
+		resp, err := stream.Recv()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Stream ended: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Print("\033[H\033[2J")
+		printNotes(resp.GetNotes())
 	}
 }
 

@@ -24,6 +24,7 @@ const (
 	NoteService_CreateNote_FullMethodName     = "/proto.notes.v1.NoteService/CreateNote"
 	NoteService_DeleteNote_FullMethodName     = "/proto.notes.v1.NoteService/DeleteNote"
 	NoteService_DeleteAllNotes_FullMethodName = "/proto.notes.v1.NoteService/DeleteAllNotes"
+	NoteService_WatchNotes_FullMethodName     = "/proto.notes.v1.NoteService/WatchNotes"
 )
 
 // NoteServiceClient is the client API for NoteService service.
@@ -35,6 +36,7 @@ type NoteServiceClient interface {
 	CreateNote(ctx context.Context, in *CreateNoteRequest, opts ...grpc.CallOption) (*CreateNoteResponse, error)
 	DeleteNote(ctx context.Context, in *DeleteNoteRequest, opts ...grpc.CallOption) (*DeleteNoteResponse, error)
 	DeleteAllNotes(ctx context.Context, in *DeleteAllNotesRequest, opts ...grpc.CallOption) (*DeleteAllNotesResponse, error)
+	WatchNotes(ctx context.Context, in *WatchNotesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[WatchNotesResponse], error)
 }
 
 type noteServiceClient struct {
@@ -95,6 +97,25 @@ func (c *noteServiceClient) DeleteAllNotes(ctx context.Context, in *DeleteAllNot
 	return out, nil
 }
 
+func (c *noteServiceClient) WatchNotes(ctx context.Context, in *WatchNotesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[WatchNotesResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &NoteService_ServiceDesc.Streams[0], NoteService_WatchNotes_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[WatchNotesRequest, WatchNotesResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type NoteService_WatchNotesClient = grpc.ServerStreamingClient[WatchNotesResponse]
+
 // NoteServiceServer is the server API for NoteService service.
 // All implementations must embed UnimplementedNoteServiceServer
 // for forward compatibility.
@@ -104,6 +125,7 @@ type NoteServiceServer interface {
 	CreateNote(context.Context, *CreateNoteRequest) (*CreateNoteResponse, error)
 	DeleteNote(context.Context, *DeleteNoteRequest) (*DeleteNoteResponse, error)
 	DeleteAllNotes(context.Context, *DeleteAllNotesRequest) (*DeleteAllNotesResponse, error)
+	WatchNotes(*WatchNotesRequest, grpc.ServerStreamingServer[WatchNotesResponse]) error
 	mustEmbedUnimplementedNoteServiceServer()
 }
 
@@ -128,6 +150,9 @@ func (UnimplementedNoteServiceServer) DeleteNote(context.Context, *DeleteNoteReq
 }
 func (UnimplementedNoteServiceServer) DeleteAllNotes(context.Context, *DeleteAllNotesRequest) (*DeleteAllNotesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteAllNotes not implemented")
+}
+func (UnimplementedNoteServiceServer) WatchNotes(*WatchNotesRequest, grpc.ServerStreamingServer[WatchNotesResponse]) error {
+	return status.Error(codes.Unimplemented, "method WatchNotes not implemented")
 }
 func (UnimplementedNoteServiceServer) mustEmbedUnimplementedNoteServiceServer() {}
 func (UnimplementedNoteServiceServer) testEmbeddedByValue()                     {}
@@ -240,6 +265,17 @@ func _NoteService_DeleteAllNotes_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NoteService_WatchNotes_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(WatchNotesRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(NoteServiceServer).WatchNotes(m, &grpc.GenericServerStream[WatchNotesRequest, WatchNotesResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type NoteService_WatchNotesServer = grpc.ServerStreamingServer[WatchNotesResponse]
+
 // NoteService_ServiceDesc is the grpc.ServiceDesc for NoteService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -268,6 +304,12 @@ var NoteService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _NoteService_DeleteAllNotes_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "WatchNotes",
+			Handler:       _NoteService_WatchNotes_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "notes/v1/notes.proto",
 }

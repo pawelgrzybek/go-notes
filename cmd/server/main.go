@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	pb "github.com/pawelgrzybek/go-notes/gen/notes/v1"
+	"github.com/pawelgrzybek/go-notes/internal/notifier"
 	"github.com/pawelgrzybek/go-notes/internal/server"
 	"github.com/pawelgrzybek/go-notes/internal/store"
 )
@@ -48,6 +49,7 @@ func run() error {
 	defer db.Close()
 
 	s := store.NewStore(db)
+	n := notifier.New()
 
 	log.Println("server listening on :8080")
 
@@ -56,7 +58,7 @@ func run() error {
 		return err
 	}
 	grpcServer := grpc.NewServer()
-	pb.RegisterNoteServiceServer(grpcServer, &server.Server{Store: s})
+	pb.RegisterNoteServiceServer(grpcServer, &server.Server{Store: s, Notifier: n})
 	reflection.Register(grpcServer)
 	return grpcServer.Serve(lis)
 }
