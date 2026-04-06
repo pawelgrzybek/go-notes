@@ -10,7 +10,7 @@ import (
 )
 
 func (s *Server) DeleteAllNotes(ctx context.Context, req *pb.DeleteAllNotesRequest) (*pb.DeleteAllNotesResponse, error) {
-	rows, err := s.q.DeleteAllNotes(context.Background())
+	rows, err := s.q.DeleteAllNotes(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete all notes: %v", err)
 	}
