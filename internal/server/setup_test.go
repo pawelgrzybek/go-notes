@@ -5,20 +5,20 @@ import (
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/pawelgrzybek/go-notes/internal/db"
 	"github.com/pawelgrzybek/go-notes/internal/server"
-	"github.com/pawelgrzybek/go-notes/internal/store"
 )
 
 func setupServer(t *testing.T) *server.Server {
 	t.Helper()
 
-	db, err := sql.Open("sqlite3", ":memory:")
+	conn, err := sql.Open("sqlite3", ":memory:")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
+	t.Cleanup(func() { conn.Close() })
 
-	_, err = db.Exec(`
+	_, err = conn.Exec(`
 		CREATE TABLE IF NOT EXISTS notes (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			note TEXT NOT NULL,
@@ -29,7 +29,6 @@ func setupServer(t *testing.T) *server.Server {
 		t.Fatal(err)
 	}
 
-	return &server.Server{
-		Store: store.NewStore(db),
-	}
+	return server.NewServer(db.New(conn), nil)
+
 }

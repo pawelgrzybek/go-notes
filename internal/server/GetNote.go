@@ -12,8 +12,7 @@ import (
 
 func (s *Server) GetNote(ctx context.Context, req *pb.GetNoteRequest) (*pb.GetNoteResponse, error) {
 	noteID := req.GetId()
-
-	note, err := s.Store.Get(noteID)
+	row, err := s.q.GetNote(ctx, int64(noteID))
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -24,7 +23,7 @@ func (s *Server) GetNote(ctx context.Context, req *pb.GetNoteRequest) (*pb.GetNo
 	}
 
 	return &pb.GetNoteResponse{
-		Note: note,
+		Note: noteToProto(row),
 	}, nil
 
 }

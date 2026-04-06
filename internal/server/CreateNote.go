@@ -10,7 +10,7 @@ import (
 )
 
 func (s *Server) CreateNote(ctx context.Context, req *pb.CreateNoteRequest) (*pb.CreateNoteResponse, error) {
-	note, err := s.Store.Create(req.GetNote())
+	row, err := s.q.CreateNote(ctx, req.GetNote())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create note: %v", err)
 	}
@@ -20,6 +20,6 @@ func (s *Server) CreateNote(ctx context.Context, req *pb.CreateNoteRequest) (*pb
 	}
 
 	return &pb.CreateNoteResponse{
-		Note: note,
+		Note: noteToProto(row),
 	}, nil
 }

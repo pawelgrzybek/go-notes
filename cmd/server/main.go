@@ -14,9 +14,9 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	pb "github.com/pawelgrzybek/go-notes/gen/notes/v1"
+	"github.com/pawelgrzybek/go-notes/internal/db"
 	"github.com/pawelgrzybek/go-notes/internal/notifier"
 	"github.com/pawelgrzybek/go-notes/internal/server"
-	"github.com/pawelgrzybek/go-notes/internal/store"
 )
 
 func run() error {
@@ -42,14 +42,15 @@ func run() error {
 
 	fmt.Println("Migrations applied successfully")
 
-	db, err := sql.Open("sqlite3", "./app.db")
+	conn, err := sql.Open("sqlite3", "./app.db")
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+	defer conn.Close()
 
-	s := store.NewStore(db)
+	querier := db.New(conn)
 	n := notifier.New()
+	svr := server.NewServer(querier, n)
 
 	log.Println("server listening on :8080")
 
@@ -58,7 +59,7 @@ func run() error {
 		return err
 	}
 	grpcServer := grpc.NewServer()
-	pb.RegisterNoteServiceServer(grpcServer, &server.Server{Store: s, Notifier: n})
+	pb.RegisterNoteServiceServer(grpcServer, svr)
 	reflection.Register(grpcServer)
 	return grpcServer.Serve(lis)
 }

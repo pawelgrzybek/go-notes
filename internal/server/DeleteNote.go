@@ -11,7 +11,7 @@ import (
 )
 
 func (s *Server) DeleteNote(ctx context.Context, req *pb.DeleteNoteRequest) (*pb.DeleteNoteResponse, error) {
-	note, err := s.Store.DeleteOne(req.GetId())
+	row, err := s.q.DeleteNoteByID(ctx, int64(req.GetId()))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, status.Errorf(codes.NotFound, "note with id %d not found", *req.Id)
@@ -24,6 +24,6 @@ func (s *Server) DeleteNote(ctx context.Context, req *pb.DeleteNoteRequest) (*pb
 	}
 
 	return &pb.DeleteNoteResponse{
-		Note: note,
+		Note: noteToProto(row),
 	}, nil
 }
