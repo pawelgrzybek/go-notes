@@ -11,6 +11,7 @@ import (
 
 	pb "github.com/pawelgrzybek/go-notes/gen/notes/v1"
 	"github.com/pawelgrzybek/go-notes/internal/db"
+	"github.com/pawelgrzybek/go-notes/internal/interceptors"
 	"github.com/pawelgrzybek/go-notes/internal/notes"
 	"github.com/pawelgrzybek/go-notes/internal/server"
 	"github.com/pawelgrzybek/go-notes/internal/sqlite"
@@ -35,8 +36,8 @@ func run() error {
 		return err
 	}
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(loggingUnaryInterceptor(logger)),
-		grpc.StreamInterceptor(loggingStreamInterceptor(logger)),
+		grpc.UnaryInterceptor(interceptors.LoggingUnaryInterceptor(logger)),
+		grpc.StreamInterceptor(interceptors.LoggingStreamInterceptor(logger)),
 	)
 	pb.RegisterNoteServiceServer(grpcServer, svr)
 	reflection.Register(grpcServer)
