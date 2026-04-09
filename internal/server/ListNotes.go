@@ -10,18 +10,17 @@ import (
 )
 
 func (s *Server) ListNotes(ctx context.Context, req *pb.ListNotesRequest) (*pb.ListNotesResponse, error) {
-	rows, err := s.q.ListNotes(ctx)
+	result, err := s.svc.List(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list notes: %v", err)
 	}
 
-	notes := make([]*pb.Note, len(rows))
-	for i, r := range rows {
-		notes[i] = noteToProto(r)
+	protoNotes := make([]*pb.Note, len(result))
+	for i, n := range result {
+		protoNotes[i] = noteToProto(n)
 	}
 
 	return &pb.ListNotesResponse{
-		Notes: notes,
+		Notes: protoNotes,
 	}, nil
-
 }

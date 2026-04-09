@@ -7,21 +7,11 @@ import (
 )
 
 func (s *Server) WatchNotes(req *pb.WatchNotesRequest, stream pb.NoteService_WatchNotesServer) error {
-	rows, err := s.q.ListNotes(stream.Context())
-	if err != nil {
-		return status.Errorf(codes.Internal, "failed to list notes: %v", err)
-	}
+	ch := s.svc.Watch(stream.Context())
 
-	notes := make([]*pb.Note, len(rows))
-	for i, r := range rows {
-		notes[i] = noteToProto(r)
-	}
-	if err := stream.Send(&pb.WatchNotesResponse{Notes: notes}); err != nil {
+	if err := s.sendSnapshot(stream); err != nil {
 		return err
 	}
-
-	ch := s.Notifier.Subscribe()
-	defer s.Notifier.Unsubscribe(ch)
 
 	for {
 		select {
@@ -31,18 +21,23 @@ func (s *Server) WatchNotes(req *pb.WatchNotesRequest, stream pb.NoteService_Wat
 			if !ok {
 				return nil
 			}
-			rows, err := s.q.ListNotes(stream.Context())
-			if err != nil {
-				return status.Errorf(codes.Internal, "failed to list notes: %v", err)
-			}
-
-			notes := make([]*pb.Note, len(rows))
-			for i, r := range rows {
-				notes[i] = noteToProto(r)
-			}
-			if err := stream.Send(&pb.WatchNotesResponse{Notes: notes}); err != nil {
+			if err := s.sendSnapshot(stream); err != nil {
 				return err
 			}
 		}
 	}
+}
+
+func (s *Server) sendSnapshot(stream pb.NoteService_WatchNotesServer) error {
+	result, err := s.svc.List(stream.Context())
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to list notes: %v", err)
+	}
+
+	protoNotes := make([]*pb.Note, len(result))
+	for i, n := range result {
+		protoNotes[i] = noteToProto(n)
+	}
+
+	return stream.Send(&pb.WatchNotesResponse{Notes: protoNotes})
 }

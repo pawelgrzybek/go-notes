@@ -6,7 +6,6 @@ import (
 	"time"
 
 	pb "github.com/pawelgrzybek/go-notes/gen/notes/v1"
-	"github.com/pawelgrzybek/go-notes/internal/notifier"
 	"google.golang.org/grpc"
 )
 
@@ -28,7 +27,6 @@ func (m *mockWatchStream) Context() context.Context {
 func TestWatchNotes(t *testing.T) {
 	t.Run("sends initial snapshot", func(t *testing.T) {
 		s := setupServer(t)
-		s.Notifier = notifier.New()
 
 		s.CreateNote(context.Background(), &pb.CreateNoteRequest{Note: new("hello")})
 
@@ -57,7 +55,6 @@ func TestWatchNotes(t *testing.T) {
 
 	t.Run("sends update on notification", func(t *testing.T) {
 		s := setupServer(t)
-		s.Notifier = notifier.New()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		stream := &mockWatchStream{ctx: ctx}
@@ -88,7 +85,6 @@ func TestWatchNotes(t *testing.T) {
 
 	t.Run("stops on client disconnect", func(t *testing.T) {
 		s := setupServer(t)
-		s.Notifier = notifier.New()
 
 		ctx, cancel := context.WithCancel(context.Background())
 		stream := &mockWatchStream{ctx: ctx}

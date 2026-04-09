@@ -10,16 +10,12 @@ import (
 )
 
 func (s *Server) CreateNote(ctx context.Context, req *pb.CreateNoteRequest) (*pb.CreateNoteResponse, error) {
-	row, err := s.q.CreateNote(ctx, req.GetNote())
+	note, err := s.svc.Create(ctx, req.GetNote())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create note: %v", err)
 	}
 
-	if s.Notifier != nil {
-		s.Notifier.Notify()
-	}
-
 	return &pb.CreateNoteResponse{
-		Note: noteToProto(row),
+		Note: noteToProto(note),
 	}, nil
 }

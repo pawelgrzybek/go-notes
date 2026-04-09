@@ -1,56 +1,32 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
 	"log"
+	"log/slog"
 	"net"
+	"os"
 
-	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/mattn/go-sqlite3"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
 	pb "github.com/pawelgrzybek/go-notes/gen/notes/v1"
 	"github.com/pawelgrzybek/go-notes/internal/db"
-	"github.com/pawelgrzybek/go-notes/internal/notifier"
+	"github.com/pawelgrzybek/go-notes/internal/notes"
 	"github.com/pawelgrzybek/go-notes/internal/server"
+	"github.com/pawelgrzybek/go-notes/internal/sqlite"
 )
 
 func run() error {
-	m, err := migrate.New(
-		"file://internal/sql/migrations",
-		"sqlite3://./app.db",
-	)
-	if err != nil {
-		return fmt.Errorf("creating migrate instance: %w", err)
-	}
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("running migrations: %w", err)
-	}
-
-	srcErr, dbErr := m.Close()
-	if srcErr != nil {
-		return srcErr
-	}
-	if dbErr != nil {
-		return dbErr
-	}
-
-	fmt.Println("Migrations applied successfully")
-
-	conn, err := sql.Open("sqlite3", "./app.db")
+	conn, err := sqlite.New()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	querier := db.New(conn)
-	n := notifier.New()
-	svr := server.NewServer(querier, n)
+	svc := notes.NewService(db.New(conn))
+	svr := server.NewServer(svc)
 
 	log.Println("server listening on :8080")
 
@@ -58,7 +34,10 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(loggingUnaryInterceptor(logger)),
+		grpc.StreamInterceptor(loggingStreamInterceptor(logger)),
+	)
 	pb.RegisterNoteServiceServer(grpcServer, svr)
 	reflection.Register(grpcServer)
 	return grpcServer.Serve(lis)

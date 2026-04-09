@@ -2,28 +2,24 @@ package server
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 
 	pb "github.com/pawelgrzybek/go-notes/gen/notes/v1"
+	"github.com/pawelgrzybek/go-notes/internal/notes"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 func (s *Server) DeleteNote(ctx context.Context, req *pb.DeleteNoteRequest) (*pb.DeleteNoteResponse, error) {
-	row, err := s.q.DeleteNoteByID(ctx, int64(req.GetId()))
+	note, err := s.svc.Delete(ctx, int64(req.GetId()))
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, status.Errorf(codes.NotFound, "note with id %d not found", *req.Id)
+		if errors.Is(err, notes.ErrNotFound) {
+			return nil, status.Errorf(codes.NotFound, "note with id %d not found", req.GetId())
 		}
 		return nil, status.Errorf(codes.Internal, "failed to delete note: %v", err)
 	}
 
-	if s.Notifier != nil {
-		s.Notifier.Notify()
-	}
-
 	return &pb.DeleteNoteResponse{
-		Note: noteToProto(row),
+		Note: noteToProto(note),
 	}, nil
 }

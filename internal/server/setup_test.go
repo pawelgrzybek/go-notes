@@ -6,6 +6,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pawelgrzybek/go-notes/internal/db"
+	"github.com/pawelgrzybek/go-notes/internal/notes"
 	"github.com/pawelgrzybek/go-notes/internal/server"
 )
 
@@ -29,6 +30,5 @@ func setupServer(t *testing.T) *server.Server {
 		t.Fatal(err)
 	}
 
-	return server.NewServer(db.New(conn), nil)
-
+	return server.NewServer(notes.NewService(db.New(conn)))
 }
