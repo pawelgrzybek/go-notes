@@ -1,2 +1,3 @@
 bin/
 app.db
+.DS_Store
